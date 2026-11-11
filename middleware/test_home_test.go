@@ -13,10 +13,12 @@ func setTestHome(t *testing.T, home string) {
 	envconfig.ReloadServerConfig()
 }
 
-// enableCloudForTest sets HOME to a clean temp dir and clears OLLAMA_NO_CLOUD
-// so that cloud features are enabled for the duration of the test.
+// enableCloudForTest sets HOME to a clean temp dir and explicitly enables
+// cloud features for the duration of the test. This fork is local-first, so
+// cloud is disabled by default; tests that exercise cloud behavior must opt in
+// via OLLAMA_NO_CLOUD=0 rather than relying on an empty/unset value.
 func enableCloudForTest(t *testing.T) {
 	t.Helper()
-	t.Setenv("OLLAMA_NO_CLOUD", "")
+	t.Setenv("OLLAMA_NO_CLOUD", "0")
 	setTestHome(t, t.TempDir())
 }

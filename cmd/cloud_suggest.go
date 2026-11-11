@@ -10,6 +10,7 @@ import (
 
 	"github.com/ollama/ollama/api"
 	"github.com/ollama/ollama/cmd/launch"
+	"github.com/ollama/ollama/envconfig"
 	"github.com/ollama/ollama/internal/modelref"
 	"github.com/ollama/ollama/types/model"
 )
@@ -94,6 +95,13 @@ func pullWithCloudSuggestion(ctx context.Context, client *api.Client, name, runn
 
 	cloudName, ok := cloudSuggestionCandidate(name, pullErr, insecure)
 	if !ok || ctx.Err() != nil {
+		return "", pullErr
+	}
+
+	// Local-first: when cloud is disabled (the default in this fork), never
+	// suggest or probe a ":cloud" model. This avoids the ollama.com round-trip
+	// below and keeps a failed local pull as a purely local error.
+	if envconfig.NoCloud() {
 		return "", pullErr
 	}
 

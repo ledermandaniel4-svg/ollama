@@ -234,8 +234,6 @@ var (
 	EnableVulkan = BoolWithDefault("OLLAMA_VULKAN")
 	// EnableIntegratedGPU controls whether integrated GPUs may be selected.
 	EnableIntegratedGPU = BoolWithDefault("OLLAMA_IGPU_ENABLE")
-	// NoCloudEnv checks the OLLAMA_NO_CLOUD environment variable.
-	NoCloudEnv = Bool("OLLAMA_NO_CLOUD")
 	// CreateRemote forces model creation through the server API even when the server is local.
 	CreateRemote = Bool("OLLAMA_CREATE_REMOTE")
 )
@@ -329,7 +327,8 @@ func AsMap() map[string]EnvVar {
 		"OLLAMA_MAX_TRANSFER_STREAMS": {"OLLAMA_MAX_TRANSFER_STREAMS", MaxTransferStreams(), "Maximum parallel transfer streams for safetensors model pulls/pushes (default 4)"},
 		"OLLAMA_MAX_QUEUE":            {"OLLAMA_MAX_QUEUE", MaxQueue(), "Maximum number of queued requests"},
 		"OLLAMA_MODELS":               {"OLLAMA_MODELS", Models(), "The path to the models directory"},
-		"OLLAMA_NO_CLOUD":             {"OLLAMA_NO_CLOUD", NoCloud(), "Disable Ollama cloud features (remote inference and web search)"},
+		"OLLAMA_ENABLE_CLOUD":         {"OLLAMA_ENABLE_CLOUD", !NoCloud(), "Enable Ollama cloud features (this fork is local-first: cloud is OFF by default; set to 1 to opt in)"},
+		"OLLAMA_NO_CLOUD":             {"OLLAMA_NO_CLOUD", NoCloud(), "Disable Ollama cloud features (remote inference and web search); already the default in this local-first fork"},
 		"OLLAMA_NOHISTORY":            {"OLLAMA_NOHISTORY", NoHistory(), "Do not preserve readline history"},
 		"OLLAMA_NOPRUNE":              {"OLLAMA_NOPRUNE", NoPrune(), "Do not prune model blobs on startup"},
 		"OLLAMA_NUM_PARALLEL":         {"OLLAMA_NUM_PARALLEL", NumParallel(), "Maximum number of parallel requests"},
@@ -437,15 +436,65 @@ func ReloadServerConfig() {
 	loadServerConfig()
 }
 
-// NoCloud returns true if Ollama cloud features are disabled,
-// checking both the OLLAMA_NO_CLOUD environment variable and
-// the disable_ollama_cloud field in ~/.ollama/server.json.
-func NoCloud() bool {
-	if NoCloudEnv() {
-		return true
+// NoCloudEnv reports whether OLLAMA_NO_CLOUD is set to a truthy value. It
+// preserves upstream semantics (unset, empty, or unparseable all read as
+// false) and is the source-of-truth signal the desktop app's cloud-config
+// state machine inspects. The fork's local-first default lives in NoCloud, not
+// here, so that app-side source detection (NoCloudSource) is unaffected.
+func NoCloudEnv() bool {
+	if v, ok := lookupBool("OLLAMA_NO_CLOUD"); ok {
+		return v
 	}
-	loadServerConfig()
-	return cachedServerConfig().DisableOllamaCloud
+	return false
+}
+
+// lookupBool parses a boolean environment variable, reporting whether it was
+// both set and parseable.
+func lookupBool(key string) (value bool, ok bool) {
+	s := strings.TrimSpace(os.Getenv(key))
+	if s == "" {
+		return false, false
+	}
+	b, err := strconv.ParseBool(s)
+	if err != nil {
+		return false, false
+	}
+	return b, true
+}
+
+// NoCloud returns true if Ollama cloud features are disabled.
+//
+// This is a local-first fork: cloud features (remote inference, web search,
+// model recommendations fetched from ollama.com, and account sign-in) are
+// DISABLED by default. Cloud is enabled only when explicitly requested, and
+// even then a server.json "disable_ollama_cloud" entry can still force it off.
+//
+// Enable cloud with either:
+//
+//	OLLAMA_ENABLE_CLOUD=1   explicit opt-in, or
+//	OLLAMA_NO_CLOUD=0       upstream-style toggle, set to false.
+func NoCloud() bool {
+	// Explicit opt-in via a dedicated variable takes precedence.
+	if v, ok := lookupBool("OLLAMA_ENABLE_CLOUD"); ok {
+		if !v {
+			return true // OLLAMA_ENABLE_CLOUD=0 -> disabled
+		}
+		loadServerConfig()
+		return cachedServerConfig().DisableOllamaCloud
+	}
+
+	// Upstream-style OLLAMA_NO_CLOUD: 1 disables, 0 enables (subject to config).
+	if v, ok := lookupBool("OLLAMA_NO_CLOUD"); ok {
+		if v {
+			return true
+		}
+		loadServerConfig()
+		return cachedServerConfig().DisableOllamaCloud
+	}
+
+	// No explicit opt-in: local-first default is cloud OFF. (server.json only
+	// carries a *disable* flag, so it can never flip the default back on.)
+	return true
 }
 
 // NoCloudSource returns the source of the cloud-disabled decision.

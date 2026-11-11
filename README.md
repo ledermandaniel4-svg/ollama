@@ -8,6 +8,10 @@
 
 Start building with open models. Access the latest releases locally or in the cloud with complete privacy.
 
+> **Local-first fork.** This is a fork of [ollama/ollama](https://github.com/ollama/ollama) where cloud
+> features are **disabled by default** — nothing is sent off your machine unless you opt in with
+> `OLLAMA_ENABLE_CLOUD=1`. See [FORK_NOTES.md](FORK_NOTES.md) for details and how to re-enable cloud.
+
 ## Download
 
 ### macOS
