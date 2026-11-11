@@ -8,9 +8,27 @@
 
 Start building with open models. Access the latest releases locally or in the cloud with complete privacy.
 
-> **Local-first fork.** This is a fork of [ollama/ollama](https://github.com/ollama/ollama) where cloud
-> features are **disabled by default** — nothing is sent off your machine unless you opt in with
-> `OLLAMA_ENABLE_CLOUD=1`. See [FORK_NOTES.md](FORK_NOTES.md) for details and how to re-enable cloud.
+> **Local-first fork (work in progress).** This is a fork of [ollama/ollama](https://github.com/ollama/ollama)
+> where cloud features are **disabled by default** — nothing is sent off your machine unless you opt in
+> with `OLLAMA_ENABLE_CLOUD=1`. See [FORK_NOTES.md](FORK_NOTES.md) for details and how to re-enable cloud.
+>
+> ⚠️ **This fork is early and not finished.** The local-first default is in place for the server and CLI,
+> but the desktop app and full test coverage are still to come. I'm publishing it early and **would love
+> help** — contributions, issues, and PRs are all welcome. See [Contributing to this fork](#contributing-to-this-fork).
+
+## Contributing to this fork
+
+This is an early, in-progress fork and help is very welcome. Good places to jump in:
+
+- **Extend local-first to the desktop app.** The default inversion currently targets the server and CLI
+  (`envconfig.NoCloud()`); the desktop app's own cloud toggle still defaults to upstream behavior.
+- **Build and test coverage.** Confirm `go build .` and `go test ./...` pass on your platform and add
+  tests for the inverted-default paths.
+- **Audit remaining `ollama.com` touchpoints** and make sure each respects the local-first default.
+
+To get started: fork or clone, create a branch, and open a PR against `main`. See
+[FORK_NOTES.md](FORK_NOTES.md) for how the local-first changes are structured and how to stay in sync
+with upstream. Please keep the patch set small and focused so the fork stays easy to rebase on upstream.
 
 ## Download
 
